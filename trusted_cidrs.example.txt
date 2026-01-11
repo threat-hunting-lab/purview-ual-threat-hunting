@@ -1,0 +1,11 @@
+# Trusted / internal CIDRs (example defaults)
+# Add your org/VPN/egress ranges to trusted_cidrs.txt (NOT committed)
+
+10.0.0.0/8
+172.16.0.0/12
+192.168.0.0/16
+127.0.0.0/8
+169.254.0.0/16
+::1/128
+fc00::/7
+fe80::/10

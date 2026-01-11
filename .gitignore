@@ -1,0 +1,25 @@
+# outputs
+outputs/
+**/outputs/
+
+# local trusted CIDRs (real env ranges)
+trusted_cidrs.txt
+
+# datasets / logs
+data/
+*.csv
+*.json
+*.ndjson
+*.log
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
