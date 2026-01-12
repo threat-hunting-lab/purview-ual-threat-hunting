@@ -7,7 +7,9 @@ Designed for environments where:
 - Suspicious activity may be buried in nested **`AuditData` JSON**
 - Analysts need **repeatable, explainable heuristics** (not black-box verdicts)
 
-The scripts emphasize **signal reduction, rarity analysis, and defensive safety**.
+The scripts emphasize **signal reduction, rarity analysis, defensive safety**, and (Phase 2) **evaluation of failure modes** relevant to AI-assisted security.
+
+---
 
 ## Why This Exists
 
@@ -23,6 +25,8 @@ This toolkit was built to:
 - Correlate IOC data safely across both structured and raw audit fields
 - Operate on large datasets without exhausting memory
 
+---
+
 ## Included Scripts (Tier-1)
 
 | Script | Purpose |
@@ -32,6 +36,8 @@ This toolkit was built to:
 | `ual_spray_bruteforce.py` | Identifies password spraying / brute-force patterns using time and IP/user distribution |
 | `ual_login_ioc_hits.py` | Matches IOC IPs against normalized login fields |
 | `ual_ioc_hits_from_raw.py` | Deep IOC sweep across nested `AuditData` JSON when normalized fields are insufficient |
+
+---
 
 ## Why Two IOC Scripts?
 
@@ -45,6 +51,27 @@ This distinction is intentional and reflects real-world UAL behavior:
 
 Separating these avoids unnecessary JSON parsing overhead while preserving coverage.
 
+---
+
+## Phase 2 — Evaluation & Robustness (AI-Security Relevant)
+
+This repo also includes an **evaluation harness** focused on how simple heuristics fail under:
+- **Coverage gaps** (normalized-only telemetry missing key fields)
+- **Baseline drift** (tenant differences / VPN churn)
+- **Baseline pollution** (indicators common globally but rare in sensitive operations)
+
+This matters for AI-assisted security because any LLM-based summarization/triage inherits upstream brittleness and can produce confident narratives from biased alert streams unless uncertainty and coverage are explicit.
+
+- Evaluation overview: `evals/README.md`
+- Canonical artifacts (sample outputs): `artifacts/evals/`
+
+**Key experiments (Phase 2):**
+- Normalized vs Raw Coverage: `artifacts/evals/normalized_vs_raw_coverage_20260112T093437Z.md`
+- Rarity Threshold Sensitivity: `artifacts/evals/rarity_threshold_sensitivity_20260112T093440Z.md`
+- Conditional Rarity Mitigation: `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.md`
+
+---
+
 ## Installation
 
 Python 3.9+ recommended.
@@ -56,7 +83,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Quickstart Examples
+## Quickstart Examples (Tier-1)
 
 ```bash
 python -m ual.scripts.ual_critical_plus_rarity --input ual.csv --slim
@@ -74,9 +101,34 @@ python -m ual.scripts.ual_ioc_hits_from_raw \
   --slim
 ```
 
+## Quickstart (Reproduce Phase 2 Evals)
+
+From the repo root:
+
+```bash
+python -m evals.experiments.normalized_vs_raw_coverage --out artifacts/evals
+python -m evals.experiments.rarity_threshold_sensitivity --out artifacts/evals
+python -m evals.experiments.conditional_rarity_mitigation --out artifacts/evals
+```
+
+Artifacts are written to `artifacts/evals/` as both:
+- `.md` (human-readable)
+- `.json` (machine-readable)
+
 ## Output
 
-Outputs are written to the `outputs/` directory by default.
+Tier-1 script outputs are written to the `outputs/` directory by default.
+
+Phase 2 evaluation artifacts are written to `artifacts/evals/`.
+
+## Repo Layout
+
+Typical layout (paths may vary slightly by branch):
+
+- `ual/scripts/` — Tier-1 hunting scripts (CLI entrypoints)
+- `evals/` — evaluation harness + experiments
+- `artifacts/evals/` — committed example outputs (md/json)
+- `outputs/` — local runtime outputs (often gitignored)
 
 ## OPSEC & Safety
 
@@ -93,6 +145,7 @@ This repository is intended for **defensive research and detection engineering o
 - IP rarity thresholds are environment-dependent
 - Not a verdict engine — findings are investigative leads
 - Assumes UAL export integrity and timestamp accuracy
+- Evaluation artifacts illustrate failure modes, not universal performance guarantees
 
 ## License
 
