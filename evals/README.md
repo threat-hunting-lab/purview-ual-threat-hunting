@@ -11,81 +11,85 @@ This evaluation harness exists to answer a different question:
 
 This work is motivated by the observation that **AI systems are often most dangerous when they are confidently wrong**, especially when operating over incomplete, noisy, or adversary-influenced security telemetry.
 
+Example: a model may confidently summarize "no evidence of compromise" when the relevant fields were never present in the normalized schema.
+
 ---
+
+## Quickstart (Reproduce the Artifacts)
+
+From the repo root:
+
+```bash
+python -m evals.experiments.normalized_vs_raw_coverage --out artifacts/evals
+python -m evals.experiments.rarity_threshold_sensitivity --out artifacts/evals
+python -m evals.experiments.conditional_rarity_mitigation --out artifacts/evals
+```
+
+Artifacts are written to `artifacts/evals/` as both:
+- `.md` (human-readable)
+- `.json` (machine-readable)
 
 ## Why Evaluation Matters for AI-Assisted Security
 
 In many environments, AI models are increasingly used to:
-- summarize security incidents,
-- prioritize alerts,
-- cluster events into narratives,
-- or suggest likely attacker behavior.
+- Summarize security incidents
+- Prioritize alerts
+- Cluster events into narratives
+- Suggest likely attacker behavior
 
-However, these models inherit **all upstream data weaknesses**:
-- missing fields,
-- inconsistent normalization,
-- rare-event bias,
-- stale or noisy indicators,
-- and imperfect analyst labels.
+However, these models inherit all upstream data weaknesses:
+- Missing fields
+- Inconsistent normalization
+- Rare-event bias
+- Stale or noisy indicators
+- Imperfect analyst labels
 
-Before placing any model “in the loop,” it is critical to understand:
-- what information is being lost,
-- which heuristics are fragile,
-- and where confidence is unjustified.
+Before placing any model "in the loop," it is critical to understand:
+- What information is being lost
+- Which heuristics are fragile
+- Where confidence is unjustified
 
-This evaluation layer treats **security telemetry as adversary-influenced input**, not ground truth.
-
----
+This evaluation layer treats security telemetry as adversary-influenced input, not ground truth.
 
 ## Scope and Design Principles
 
 This evaluation harness is intentionally:
 - **Model-agnostic** (no LLMs required)
 - **Deterministic and reproducible**
-- **Focused on falsification**, not optimization
-- **Grounded in real UAL behavior**, not toy datasets
+- **Focused on falsification, not optimization**
+- **Grounded in real UAL behavior, not toy datasets**
 
-The goal is not to maximize detection rates, but to **characterize failure modes** that would mislead downstream automation or AI-assisted analysis.
-
----
+The goal is not to maximize detection rates, but to characterize failure modes that would mislead downstream automation or AI-assisted analysis.
 
 ## Threat Model and Assumptions
 
 ### Assumptions
+
 - UAL exports are structurally valid but may be incomplete
 - Timestamps and event ordering are mostly accurate
 - Analyst labels (when present) are noisy and imperfect
 - Attackers may deliberately exploit logging blind spots
 
-### Non-Assumptions
+### Explicit Non-Assumptions
+
 - Normalized fields are complete or authoritative
 - Rarity implies maliciousness
 - Absence of evidence implies benign behavior
 - Labels represent ground truth
-
----
 
 ## Experiments
 
 ### 1. Normalized vs Raw Coverage
 
 **Question:**  
-How often does normalized UAL telemetry miss attacker infrastructure that is only present in raw `AuditData` fields?
+How often does normalized UAL telemetry miss attacker infrastructure that is only present in raw AuditData fields?
 
 **Why this matters:**  
 AI systems frequently operate over normalized schemas. If normalization silently drops critical context, models may hallucinate explanations or over-generalize benign behavior.
 
-**Method:**  
-- Generate or sample UAL-like events where IP indicators appear inconsistently
-- Compare detection coverage using:
-  - normalized fields only
-  - deep inspection of raw JSON
-- Measure recall deltas and compute cost tradeoffs
-
-**Failure Mode Exposed:**  
-False confidence due to silent information loss.
-
----
+**Outputs:**
+- `artifacts/evals/normalized_vs_raw_coverage_20260112T093437Z.md`
+- `artifacts/evals/normalized_vs_raw_coverage_20260112T093437Z.json`
 
 ### 2. Rarity Threshold Sensitivity
 
@@ -93,48 +97,42 @@ False confidence due to silent information loss.
 How stable are IP rarity heuristics under changing baseline noise, tenant size, and IP diversity?
 
 **Why this matters:**  
-Static rarity thresholds often look reasonable in small datasets but collapse under scale or drift, producing misleading “rare” signals.
+Static rarity thresholds often look reasonable in small datasets but collapse under scale or drift, producing misleading "rare" signals.
 
-**Method:**  
-- Vary baseline distributions and event volumes
-- Sweep rarity thresholds
-- Measure precision/recall degradation
+**Outputs:**
+- `artifacts/evals/rarity_threshold_sensitivity_20260112T093440Z.md`
+- `artifacts/evals/rarity_threshold_sensitivity_20260112T093440Z.json`
 
-**Failure Mode Exposed:**  
-Brittle heuristics that appear robust in one environment but fail in another.
-
----
-
-### 3. Label Noise Stability
+### 3. Conditional Rarity Mitigation (Operation-Conditioned)
 
 **Question:**  
-How sensitive are heuristic outcomes to imperfect or noisy analyst labels?
+When an attacker IP becomes common globally (baseline pollution / shared VPN egress), can global rarity miss sensitive admin abuse — and does operation-conditioned rarity mitigate that?
 
 **Why this matters:**  
-AI models trained or evaluated on noisy labels may overfit spurious patterns or reinforce incorrect assumptions.
+Global rarity can fail when an indicator is frequent in high-volume operations (e.g., logins), even if it is rare where it matters (e.g., mailbox permission changes). This is a classic upstream brittleness problem: downstream AI triage/summarization inherits whatever the detector does (including blind spots).
 
-**Method:**  
-- Inject controlled label noise
-- Observe stability of heuristic conclusions
-- Track variance under increasing corruption
+**Method (high level):**
+- Evaluate only a sensitive operation (Add-MailboxPermission)
+- Inject benign "cover traffic" so the attacker IP is common globally
+- Compare:
+  - **Global rarity:** `count(ip) ≤ t`
+  - **Conditional rarity:** `count(operation, ip) ≤ t`
 
-**Failure Mode Exposed:**  
-Over-reliance on weak supervision.
-
----
+**Outputs:**
+- `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.md`
+- `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.json`
 
 ## Metrics and Interpretation
 
 Metrics are intentionally simple and interpretable:
-- Precision / Recall
+- Precision / Recall / F1
+- Alert rate (proxy for operational triage load)
 - Coverage deltas
 - Stability under perturbation
 
-These metrics are **diagnostic**, not absolute performance scores.
+These metrics are diagnostic, not absolute performance scores.
 
-A “good” result is not high recall — it is **predictable degradation** under known stressors.
-
----
+A "good" result is not high recall — it is **predictable degradation under known stressors**.
 
 ## Limitations
 
@@ -143,8 +141,6 @@ A “good” result is not high recall — it is **predictable degradation** und
 - Results are environment-dependent by design
 - This is not a replacement for analyst judgment
 
----
-
 ## Next Steps
 
 Planned extensions include:
@@ -152,13 +148,12 @@ Planned extensions include:
 - Evaluating hallucination risk when telemetry is incomplete
 - Testing refusal behavior when evidence is insufficient
 - Extending datasets to additional telemetry sources
-
----
+- Label-noise stress test (planned): inject controlled label corruption to quantify metric instability under weak supervision
 
 ## Summary
 
 This evaluation harness exists to make uncertainty explicit.
 
-Before asking AI systems to reason about security events, we must first understand **where the data lies, where heuristics break, and where confidence is unwarranted**.
+Before asking AI systems to reason about security events, we must first understand where the data lies, where heuristics break, and where confidence is unwarranted.
 
 This work treats evaluation as a safety mechanism — not an afterthought.
