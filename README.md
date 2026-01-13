@@ -70,6 +70,30 @@ This matters for AI-assisted security because any LLM-based summarization/triage
 - Rarity Threshold Sensitivity: `artifacts/evals/rarity_threshold_sensitivity_20260112T093440Z.md`
 - Conditional Rarity Mitigation: `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.md`
 
+## Phase 3 — Model-in-the-Loop Control Eval (LLM Safety Harness)
+
+Phase 3 adds a **deterministic evaluation harness** for AI-assisted security workflows: given a UAL-style evidence bundle and a finite set of candidate claims, a model must select **only** claims supported by evidence, **refuse** when evidence is insufficient, and **ignore prompt-injection** attempts embedded in the data.
+
+This is designed to measure (and prevent) the exact failure modes that break real-world deployments:
+- **Hallucination**: selecting unsupported claims (false positives)
+- **Under-calling**: missing supported claims (false negatives)
+- **Over-refusal**: refusing when evidence is sufficient
+- **Prompt injection**: following malicious instructions inside "logs"
+
+**Phase 3 experiment:**
+- Model-in-loop control eval (claim support + refusal + injection):  
+  `evals/experiments/model_in_loop_control_eval.py`
+
+**Canonical Phase 3 artifact (sample output):**
+- `artifacts/evals/model_in_loop_control_eval_20260112T105045Z.md`
+
+Run it from repo root:
+```bash
+python -m evals.experiments.model_in_loop_control_eval --out artifacts/evals
+```
+
+Note: the experiment writes both `.md` and `.json`. Some JSON artifacts may be excluded by `.gitignore`; the `.md` is intended as the reviewer-facing canonical summary.
+
 ---
 
 ## Installation
