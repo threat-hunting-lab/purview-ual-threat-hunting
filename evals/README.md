@@ -23,11 +23,12 @@ From the repo root:
 python -m evals.experiments.normalized_vs_raw_coverage --out artifacts/evals
 python -m evals.experiments.rarity_threshold_sensitivity --out artifacts/evals
 python -m evals.experiments.conditional_rarity_mitigation --out artifacts/evals
+python -m evals.experiments.model_in_loop_control_eval --out artifacts/evals
 ```
 
-Artifacts are written to `artifacts/evals/` as both:
-- `.md` (human-readable)
-- `.json` (machine-readable)
+Artifacts are written to `artifacts/evals/` as:
+- `.md` (human-readable, reviewer-facing)
+- `.json` (machine-readable; may be excluded from git in some repos via `.gitignore`)
 
 ## Why Evaluation Matters for AI-Assisted Security
 
@@ -54,7 +55,7 @@ This evaluation layer treats security telemetry as adversary-influenced input, n
 ## Scope and Design Principles
 
 This evaluation harness is intentionally:
-- **Model-agnostic** (no LLMs required)
+- **Model-agnostic where possible** (LLMs are optional, not required)
 - **Deterministic and reproducible**
 - **Focused on falsification, not optimization**
 - **Grounded in real UAL behavior, not toy datasets**
@@ -122,6 +123,32 @@ Global rarity can fail when an indicator is frequent in high-volume operations (
 - `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.md`
 - `artifacts/evals/conditional_rarity_mitigation_20260112T101004Z.json`
 
+### 4. Model-in-the-Loop Control Eval (Hallucination / Refusal / Injection)
+
+**Question:**  
+If an LLM is used to summarize or triage UAL-style evidence, can we score whether it:
+- selects only evidence-supported claims (no hallucinations),
+- refuses when evidence is insufficient,
+- ignores prompt-injection attempts embedded in "logs"?
+
+**Why this matters:**  
+In AI-assisted security, the most dangerous failure mode is confidently wrong output over incomplete or adversary-influenced telemetry. This experiment treats model output like a detector: it must make constrained, auditable selections under explicit rules.
+
+**Method (high level):**
+
+Each case contains:
+- `evidence[]` (UAL-style snippets)
+- `candidate_claims{}` (the only allowed claims)
+- `supported_claim_ids[]` (ground-truth supported claims)
+
+The model returns `supported_claim_ids` and is scored via a confusion matrix over the claim set.
+
+Additional labels track injection presence and whether refusal is required.
+
+**Outputs:**
+- `artifacts/evals/model_in_loop_control_eval_20260112T105045Z.md`
+- (Optional/generated) `artifacts/evals/model_in_loop_control_eval_20260112T105045Z.json`
+
 ## Metrics and Interpretation
 
 Metrics are intentionally simple and interpretable:
@@ -144,11 +171,10 @@ A "good" result is not high recall — it is **predictable degradation under kno
 ## Next Steps
 
 Planned extensions include:
-- Introducing model-in-the-loop summarization with explicit confidence bounds
-- Evaluating hallucination risk when telemetry is incomplete
-- Testing refusal behavior when evidence is insufficient
+- Calibrated abstention: penalize "confidently wrong" more heavily than uncertainty
+- More adversarial cases: conflicting evidence, poisoned fields, partial telemetry, and injection variants
+- Label-noise stress test: inject controlled label corruption to quantify metric instability under weak supervision
 - Extending datasets to additional telemetry sources
-- Label-noise stress test (planned): inject controlled label corruption to quantify metric instability under weak supervision
 
 ## Summary
 
